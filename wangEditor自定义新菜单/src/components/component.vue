@@ -1,13 +1,22 @@
 <template>
   <div class="custom-component">
-    {{ value }}
+    我是自定义组件, 外部传过来的参数：{{ props.uid }}
   </div>
 </template>
 
 <script setup>
-  import { ref } from 'vue'
+  import { ref, defineProps } from 'vue'
 
-  const value = ref('123123567')
+  const props = defineProps({
+    uid: {
+      type: [ String, Number ],
+      required: true
+    },
+    editor: {
+      type: Object,
+      required: true
+    }
+  })
 </script>
 
 <style>

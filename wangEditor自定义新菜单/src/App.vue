@@ -1,13 +1,25 @@
 <template>
-  <div style="border: 1px solid #ccc">
-    <Toolbar
-      v-if="editorRef"
-      :editor="editorRef"/>
-    <Editor
-      v-model="content"
-      style="height: 80vh"
-      :default-config="editorConfig"
-      @onCreated="onEditorCreated"/>
+  <div style="display: flex; align-items: center">
+    <div style="border-right:1px solid #ddd; padding-right: 15px; margin-right: 15px;">
+      <Toolbar
+        v-if="editorRef1"
+        :editor="editorRef1"/>
+      <Editor
+        v-model="content"
+        style="height: 80vh"
+        :default-config="editorConfig"
+        @on-created="editor => onEditorCreated(1, editor)"/>
+    </div>
+    <div>
+      <Toolbar
+        v-if="editorRef2"
+        :editor="editorRef2"/>
+      <Editor
+        v-model="content"
+        style="height: 80vh"
+        :default-config="editorConfig"
+        @on-created="editor => onEditorCreated(2, editor)"/>
+    </div>
   </div>
 </template>
 
@@ -18,15 +30,15 @@
 <script setup>
   import $ from 'jquery'
   import { createApp, ref } from 'vue'
+  import { uid } from 'uid'
 
-  import Component from './components/Component.vue'
-
+  import { Boot } from '@wangeditor/editor'
   import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
   import '@wangeditor/editor/dist/css/style.css' // 引入 css
 
-  import { Boot } from '@wangeditor/editor'
+  import Component from './components/Component.vue'
 
-  // https://www.wangeditor.com/v5/development.html
+  // 文档：https://www.wangeditor.com/v5/development.html
   Boot.registerMenu({
     key: '按钮形式',
     factory () {
@@ -192,6 +204,8 @@
       }
     }
   })
+
+  // *这里面有用 vue 组件实现弹框的内容的例子
   Boot.registerMenu({
     key: '弹框形式（bar消失）',
     factory () {
@@ -222,35 +236,21 @@
 
           contentEl.className += 'menu1'
 
-          const app = createApp(Component)
+          const app = createApp(Component, {
+            /**
+             *  可以在这里把组件需要的参数穿进去
+             *  比如说一个页面需要多个编辑器，需要区分是哪个编辑器传递不同的参数
+             *  就可以在这里实现区分，editor.$params 是在 on-created 时手动赋值的
+             **/
+            uid: editor.$params.uid,
+
+            // 通常要传递进去 editor，方便组件内操作编辑器
+            editor: editor
+          })
 
           app.mount(contentEl)
 
           return contentEl
-
-          // TS 语法
-          // getModalContentElem(editor) {                        // JS 语法
-          // console.log(new Date().getTime())
-          // const $content = $('<div></div>')
-          // const $button = $('<button>do something</button>')
-          // $content.append($button)
-          //
-          // $button.on('click', () => {
-          //   editor.insertText(' hello ')
-          // })
-          //
-          // setTimeout(() => {
-          //   // 这样就可以插入内容
-          //   editor.focus()
-          //   editor.insertText('123123')
-          //
-          //   // 关闭弹框
-          //   editor.hidePanelOrModal()
-          // }, 5000)
-          //
-          // return $content[ 0 ] // 返回 DOM Element 类型
-
-          // PS：也可以把 $content 缓存下来，这样不用每次重复创建、重复绑定事件，优化性能
         }
 
         isActive (editor) {
@@ -273,7 +273,8 @@
 
   const content = ref(`Lorem ipsum dolor sit amet, consectetur adipisicing elit. Architecto atque blanditiis eaque inventore provident quam? Atque excepturi exercitationem iste itaque laborum optio pariatur, quaerat qui repellat sapiente similique sint vitae!Lorem ipsum dolor sit amet, consectetur adipisicing elit. Architecto atque blanditiis eaque inventore provident quam? Atque excepturi exercitationem iste itaque laborum optio pariatur, quaerat qui repellat sapiente similique sint vitae!Lorem ipsum dolor sit amet, consectetur adipisicing elit. Architecto atque blanditiis eaque inventore provident quam? Atque excepturi exercitationem iste itaque laborum optio pariatur, quaerat qui repellat sapiente similique sint vitae!Lorem ipsum dolor sit amet, consectetur adipisicing elit. Architecto atque blanditiis eaque inventore provident quam? Atque excepturi exercitationem iste itaque laborum optio pariatur, quaerat qui repellat sapiente similique sint vitae!Lorem ipsum dolor sit amet, consectetur adipisicing elit. Architecto atque blanditiis eaque inventore provident quam? Atque excepturi exercitationem iste itaque laborum optio pariatur, quaerat qui repellat sapiente similique sint vitae!Lorem ipsum dolor sit amet, consectetur adipisicing elit. Architecto atque blanditiis eaque inventore provident quam? Atque excepturi exercitationem iste itaque laborum optio pariatur, quaerat qui repellat sapiente similique sint vitae!Lorem ipsum dolor sit amet, consectetur adipisicing elit. Architecto atque blanditiis eaque inventore provident quam? Atque excepturi exercitationem iste itaque laborum optio pariatur, quaerat qui repellat sapiente similique sint vitae!Lorem ipsum dolor sit amet, consectetur adipisicing elit. Architecto atque blanditiis eaque inventore provident quam? Atque excepturi exercitationem iste itaque laborum optio pariatur, quaerat qui repellat sapiente similique sint vitae!`)
 
-  const editorRef = ref()
+  const editorRef1 = ref()
+  const editorRef2 = ref()
   const editorConfig = {
     hoverbarKeys: {
       text: {
@@ -294,7 +295,14 @@
   }
 
   // *一定要写 Object.seal(editor)
-  const onEditorCreated = (editor) => {
+  const onEditorCreated = (num, editor) => {
+    const editorRef = num === 1 ? editorRef1 : editorRef2
+
+    // *设置自定义参数，需要写在 Object.seal(editor) 之前，否则会报错
+    editor.$params = {
+      uid: uid()
+    }
+
     editorRef.value = Object.seal(editor)
 
     /**
@@ -325,7 +333,6 @@
           minHeight: 0
         })
         $el.find('.btn-close').hide()
-        // alert(123)
       }
     })
   }
