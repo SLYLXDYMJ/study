@@ -1,0 +1,8 @@
+import { createApp } from 'vue'
+import './html-docx-js.js'
+
+import App from './App.vue'
+
+const app = createApp(App)
+
+app.mount('#app')
