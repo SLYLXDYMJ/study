@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>浏览器录音与上传应用</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 2.5rem;
+      text-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    .subtitle {
+      text-align: center;
+      margin-bottom: 30px;
+      opacity: 0.9;
+    }
+
+    .recorder-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 25px;
+    }
+
+    .visualizer {
+      width: 100%;
+      height: 150px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 10px;
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin: 20px 0;
+    }
+
+    .btn {
+      padding: 12px 25px;
+      border: none;
+      border-radius: 50px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .record-btn {
+      background: #ff4d4d;
+      color: white;
+    }
+
+    .record-btn:hover:not(:disabled) {
+      background: #ff3333;
+      transform: translateY(-2px);
+    }
+
+    .record-btn.recording {
+      background: #ff3333;
+      animation: pulse 1.5s infinite;
+    }
+
+    .stop-btn {
+      background: #4CAF50;
+      color: white;
+    }
+
+    .stop-btn:hover:not(:disabled) {
+      background: #45a049;
+      transform: translateY(-2px);
+    }
+
+    .play-btn {
+      background: #2196F3;
+      color: white;
+    }
+
+    .play-btn:hover:not(:disabled) {
+      background: #0b7dda;
+      transform: translateY(-2px);
+    }
+
+    .upload-btn {
+      background: #9C27B0;
+      color: white;
+    }
+
+    .upload-btn:hover:not(:disabled) {
+      background: #8E24AA;
+      transform: translateY(-2px);
+    }
+
+    .status {
+      text-align: center;
+      font-size: 1.2rem;
+      margin: 10px 0;
+      min-height: 30px;
+      padding: 10px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      width: 100%;
+    }
+
+    .timer {
+      font-size: 2rem;
+      font-weight: bold;
+      margin: 10px 0;
+      font-family: monospace;
+    }
+
+    .audio-player {
+      width: 100%;
+      margin-top: 20px;
+      display: none;
+    }
+
+    .upload-section {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 20px;
+      border-radius: 10px;
+      margin-top: 20px;
+      width: 100%;
+    }
+
+    .upload-section h2 {
+      margin-bottom: 15px;
+      font-size: 1.5rem;
+    }
+
+    .upload-form {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    label {
+      font-weight: 600;
+    }
+
+    input, textarea {
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      background: rgba(255, 255, 255, 0.9);
+      font-size: 1rem;
+    }
+
+    textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+
+    .progress-container {
+      width: 100%;
+      height: 10px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 5px;
+      margin-top: 10px;
+      overflow: hidden;
+      display: none;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: #4CAF50;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    .response {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      display: none;
+    }
+
+    .response.success {
+      background: rgba(76, 175, 80, 0.2);
+      border-left: 4px solid #4CAF50;
+    }
+
+    .response.error {
+      background: rgba(244, 67, 54, 0.2);
+      border-left: 4px solid #f44336;
+    }
+
+    @keyframes pulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.7);
+      }
+      70% {
+        box-shadow: 0 0 0 15px rgba(255, 77, 77, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(255, 77, 77, 0);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 20px;
+      }
+
+      h1 {
+        font-size: 2rem;
+      }
+
+      .controls {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .btn {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>浏览器录音与上传应用</h1>
+  <p class="subtitle">录制音频并上传到服务器</p>
+
+  <div class="recorder-container">
+    <div class="visualizer">
+      <canvas id="canvas"></canvas>
+    </div>
+
+    <div class="timer" id="timer">00:00</div>
+
+    <div class="status" id="status">点击"开始录音"按钮开始录制</div>
+
+    <div class="controls">
+      <button class="btn record-btn" id="recordBtn">
+        <span>●</span> 开始录音
+      </button>
+      <button class="btn stop-btn" id="stopBtn" disabled>
+        <span>■</span> 停止录音
+      </button>
+      <button class="btn play-btn" id="playBtn" disabled>
+        <span>▶</span> 播放录音
+      </button>
+    </div>
+
+    <audio class="audio-player" id="audioPlayer" controls></audio>
+
+    <div class="upload-section">
+      <h2>上传录音到服务器</h2>
+      <div class="upload-form">
+        <div class="form-group">
+          <label for="fileName">文件名：</label>
+          <input type="text" id="fileName" placeholder="输入文件名（可选）">
+        </div>
+
+        <div class="form-group">
+          <label for="fileDescription">描述：</label>
+          <textarea id="fileDescription" placeholder="输入文件描述（可选）"></textarea>
+        </div>
+
+        <button class="btn upload-btn" id="uploadBtn" disabled>
+          <span>↑</span> 上传录音
+        </button>
+
+        <div class="progress-container" id="progressContainer">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+      </div>
+
+      <div class="response" id="response"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 获取DOM元素
+  const recordBtn = document.getElementById('recordBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const playBtn = document.getElementById('playBtn');
+  const uploadBtn = document.getElementById('uploadBtn');
+  const status = document.getElementById('status');
+  const timer = document.getElementById('timer');
+  const audioPlayer = document.getElementById('audioPlayer');
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const fileName = document.getElementById('fileName');
+  const fileDescription = document.getElementById('fileDescription');
+  const progressContainer = document.getElementById('progressContainer');
+  const progressBar = document.getElementById('progressBar');
+  const response = document.getElementById('response');
+
+  // 变量初始化
+  let mediaRecorder;
+  let audioChunks = [];
+  let audioBlob;
+  let audioUrl;
+  let startTime;
+  let timerInterval;
+  let audioContext;
+  let analyser;
+  let dataArray;
+  let bufferLength;
+  let source;
+
+  // 设置Canvas尺寸
+  function setupCanvas() {
+    canvas.width = canvas.parentElement.clientWidth;
+    canvas.height = canvas.parentElement.clientHeight;
+  }
+
+  // 绘制音频可视化
+  function drawVisualizer() {
+    if (!analyser) return;
+
+    requestAnimationFrame(drawVisualizer);
+
+    analyser.getByteFrequencyData(dataArray);
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const barWidth = (canvas.width / bufferLength) * 2.5;
+    let barHeight;
+    let x = 0;
+
+    for(let i = 0; i < bufferLength; i++) {
+      barHeight = dataArray[i] / 2;
+
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, '#ff4d4d');
+      gradient.addColorStop(0.5, '#ff9933');
+      gradient.addColorStop(1, '#ffff66');
+
+      ctx.fillStyle = gradient;
+      ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+
+      x += barWidth + 1;
+    }
+  }
+
+  // 更新计时器
+  function updateTimer() {
+    const elapsedTime = Date.now() - startTime;
+    const minutes = Math.floor(elapsedTime / 60000);
+    const seconds = Math.floor((elapsedTime % 60000) / 1000);
+    timer.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  }
+
+  // 开始录音
+  async function startRecording() {
+    try {
+      // 请求麦克风权限
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      // 设置音频上下文和可视化
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      analyser = audioContext.createAnalyser();
+      source = audioContext.createMediaStreamSource(stream);
+      source.connect(analyser);
+      analyser.fftSize = 256;
+      bufferLength = analyser.frequencyBinCount;
+      dataArray = new Uint8Array(bufferLength);
+
+      // 设置Canvas
+      setupCanvas();
+      drawVisualizer();
+
+      // 创建MediaRecorder实例
+      mediaRecorder = new MediaRecorder(stream);
+
+      // 收集音频数据
+      mediaRecorder.ondataavailable = (event) => {
+        audioChunks.push(event.data);
+      };
+
+      // 录音完成
+      mediaRecorder.onstop = () => {
+        // 创建音频Blob和URL
+        audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
+        audioUrl = URL.createObjectURL(audioBlob);
+
+        // 设置音频播放器
+        audioPlayer.src = audioUrl;
+        audioPlayer.style.display = 'block';
+
+        // 启用播放和上传按钮
+        playBtn.disabled = false;
+        uploadBtn.disabled = false;
+
+        // 停止所有音频轨道
+        stream.getTracks().forEach(track => track.stop());
+
+        // 停止可视化
+        if (source) {
+          source.disconnect();
+        }
+      };
+
+      // 开始录音
+      mediaRecorder.start();
+      startTime = Date.now();
+      timerInterval = setInterval(updateTimer, 1000);
+
+      // 更新UI状态
+      recordBtn.disabled = true;
+      recordBtn.classList.add('recording');
+      stopBtn.disabled = false;
+      status.textContent = '录音中...';
+
+    } catch (error) {
+      console.error('录音错误:', error);
+      status.textContent = '无法访问麦克风，请检查权限设置';
+    }
+  }
+
+  // 停止录音
+  function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+      clearInterval(timerInterval);
+
+      // 更新UI状态
+      recordBtn.disabled = false;
+      recordBtn.classList.remove('recording');
+      stopBtn.disabled = true;
+      status.textContent = '录音完成，可以播放或上传';
+    }
+  }
+
+  // 播放录音
+  function playRecording() {
+    if (audioUrl) {
+      audioPlayer.play();
+      status.textContent = '播放中...';
+
+      audioPlayer.onended = () => {
+        status.textContent = '播放结束';
+      };
+    }
+  }
+
+  // 上传录音到服务器
+  async function uploadRecording() {
+    if (!audioBlob) {
+      showResponse('没有可上传的录音文件', 'error');
+      return;
+    }
+
+    try {
+      // 显示上传进度
+      progressContainer.style.display = 'block';
+      progressBar.style.width = '0%';
+
+      // 创建FormData对象
+      const formData = new FormData();
+      formData.append('audio', audioBlob, fileName.value || `recording-${Date.now()}.webm`);
+      formData.append('description', fileDescription.value || '');
+      formData.append('timestamp', new Date().toISOString());
+
+      // 使用XMLHttpRequest以便跟踪上传进度
+      const xhr = new XMLHttpRequest();
+
+      // 跟踪上传进度
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          const percentComplete = (e.loaded / e.total) * 100;
+          progressBar.style.width = percentComplete + '%';
+        }
+      });
+
+      // 处理响应
+      xhr.addEventListener('load', () => {
+        if (xhr.status === 200) {
+          showResponse('录音上传成功！', 'success');
+          // 可以在这里处理服务器返回的数据
+          console.log('服务器响应:', xhr.responseText);
+        } else {
+          showResponse(`上传失败: ${xhr.status} ${xhr.statusText}`, 'error');
+        }
+      });
+
+      // 处理错误
+      xhr.addEventListener('error', () => {
+        showResponse('上传过程中发生网络错误', 'error');
+      });
+
+      // 发送请求
+      xhr.open('POST', '/api/upload-audio'); // 替换为您的实际API端点
+      xhr.send(formData);
+
+      status.textContent = '上传中...';
+
+    } catch (error) {
+      console.error('上传错误:', error);
+      showResponse('上传失败: ' + error.message, 'error');
+    }
+  }
+
+  // 显示服务器响应
+  function showResponse(message, type) {
+    response.textContent = message;
+    response.className = 'response ' + type;
+    response.style.display = 'block';
+
+    // 5秒后自动隐藏响应
+    setTimeout(() => {
+      response.style.display = 'none';
+    }, 5000);
+  }
+
+  // 事件监听
+  recordBtn.addEventListener('click', startRecording);
+  stopBtn.addEventListener('click', stopRecording);
+  playBtn.addEventListener('click', playRecording);
+  uploadBtn.addEventListener('click', uploadRecording);
+
+  // 窗口调整时重新设置Canvas
+  window.addEventListener('resize', setupCanvas);
+
+  // 初始化Canvas
+  setupCanvas();
+</script>
+</body>
+</html>

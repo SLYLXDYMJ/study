@@ -1,6 +1,6 @@
 <template>
   <div class="custom-component">
-    我是自定义组件, 外部传过来的参数：{{ props.uid }}
+    我是自定义组件, 外部传过来的参数：{{ uid }}
   </div>
 </template>
 
